@@ -1,0 +1,9 @@
+{
+    "name": "lenton/castaway",
+    "type": "project",
+    "autoload": {
+        "psr-4": {
+            "Lenton\\Castaway\\": "src"
+        }
+    }
+}

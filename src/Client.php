@@ -1,5 +1,9 @@
 <?php
-class client {
+
+namespace Lenton\Castaway;
+
+class Client
+{
 	private $socket;
 	public $username = '';
 	public $chunkx;
@@ -7,23 +11,23 @@ class client {
 	public $localx;
 	public $localy;
 	public $border;
-	
+
 	public function __construct($socket) {
 		$this->socket = $socket;
 	}
-	
+
 	public function get_socket() {
 		return $this->socket;
 	}
-	
+
 	public function read_socket() {
 		return socket_read($this->socket, 1024);
 	}
-	
+
 	public function set_account_data($username) {
 		$this->username = $username;
 	}
-	
+
 	public function update_pos($chunkx, $chunky, $localx, $localy) {
 		$this->chunkx = $chunkx;
 		$this->chunky = $chunky;

@@ -1,5 +1,13 @@
 <?php
-class server {
+
+namespace Lenton\Castaway;
+
+use Lenton\Castaway\Chunk;
+use Lenton\Castaway\Client;
+use Lenton\Castaway\NPC;
+
+class Server
+{
 	private $address;
 	private $port;
 	private $max;
@@ -7,13 +15,13 @@ class server {
 	private $clients = array();
 	private $chunks = array();
 	private $npcs = array();
-	
+
 	public function __construct($address, $port, $max) {
 		$this->address = $address;
 		$this->port = $port;
 		$this->max = $max;
 	}
-	
+
 	public function run() {
 		$fh = fopen('data_sent.txt', 'w');
 		fwrite($fh, "- - - Data Sent to Client Log - - -\n");
@@ -22,7 +30,7 @@ class server {
 		$this->loop();
 		$this->stop();
 	}
-	
+
 	private function start() {
 		//Load chunks
 		echo 'Loading chunks... ';
@@ -30,29 +38,29 @@ class server {
 		foreach($file_names as $file_name) {
 			if($file_name == '.' || $file_name == '..') { continue; }
 			$chunk_name = substr($file_name, 0, -4);
-			$this->chunks[$chunk_name] = new chunk($chunk_name);
+			$this->chunks[$chunk_name] = new Chunk($chunk_name);
 		}
 		echo "Done!\n";
-		
+
 		echo 'Loading NPCs... ';
 		$npc_config_file = ereg_replace("[\t\n\r]", '', file_get_contents('config/npcs.txt'));
 		$npc_config = explode('#', $npc_config_file);
 		foreach($npc_config as $npc_data) {
 			$npc_fields = explode(',', $npc_data);
-			$this->npcs[] = new npc($npc_fields[0], $npc_fields[1], $npc_fields[2], $npc_fields[3], $npc_fields[4], $npc_fields[5]);
+			$this->npcs[] = new NPC($npc_fields[0], $npc_fields[1], $npc_fields[2], $npc_fields[3], $npc_fields[4], $npc_fields[5]);
 		}
 		echo "Done!\n";
-		
+
 		//Setup socket
 		echo 'Setting up socket... ';
 		$this->socket = socket_create(AF_INET, SOCK_STREAM, 0);
 		socket_bind($this->socket, $this->address, $this->port) or die('Error: Could not bind to address');
 		socket_listen($this->socket);
 		echo "Done!\n";
-		
+
 		echo "Server started.\n";
 	}
-	
+
 	private function loop() {
 		while(true) {
 			//Setup clients listen socket for reading
@@ -66,12 +74,12 @@ class server {
 			if(socket_select($read, $write = NULL, $except = NULL, $tv_sec = 5) < 1) {
 				continue;
 			}
-			
+
 			//If a new connection is being made add it to the client array
 			if(in_array($this->socket, $read)) {
 				for($i=0;$i<$this->max;$i++) {
 					if(!isset($this->clients[$i])) {
-						$this->clients[$i] = new client(socket_accept($this->socket));
+						$this->clients[$i] = new Client(socket_accept($this->socket));
 						echo 'New client connected as #'.$i.".\n";
 						echo 'Total clients connected: '.count($this->clients)."\n";
 						break;
@@ -102,11 +110,11 @@ class server {
 			}
 		}
 	}
-	
+
 	private function clean_packet($packet) {
 		return substr(ereg_replace("[ \t\r]", '', $packet).chr(0), 0, -1);
 	}
-	
+
 	private function deal_with_packet($i, $packet) {
 		$fields = explode("\n", $this->clean_packet($packet));
 		$op_code = $fields[0];
@@ -155,13 +163,13 @@ class server {
 				//echo 'Client #'.$i.' pos: x='.$new_localx.', y='.$new_localy."\n";
 				if($new_localy < 0) { $new_chunky--; $new_localy += 1023; }
 				elseif($new_localy > 1023) { $new_chunky++; $new_localy -= 1023; }
-				
+
 				if($new_localx < 0) { $new_chunkx--; $new_localx += 1023; }
 				elseif($new_localx > 1023) { $new_chunkx++; $new_localx -= 1023; }
-				
+
 				$this->clients[$i]->update_pos($new_chunkx, $new_chunky, $new_localx, $new_localy);
 				$this->send_player($i);
-				
+
 				if($new_chunkx != $chunkx || $new_chunky != $chunky) {
 					echo "Sent new grid brah to #".$i.".\n";
 					$this->send_chunks($i);
@@ -173,7 +181,7 @@ class server {
 				break;
 		}
 	}
-	
+
 	private function send_packet($packet, $client) {
 		socket_write($this->clients[$client]->get_socket(), $packet);
 		//echo 'Sents packet to client #'.$client.': '.$packet."\n";
@@ -181,7 +189,7 @@ class server {
 		fwrite($fh, str_replace("\n", '|', $packet)."\n");
 		fclose($fh);
 	}
-	
+
 	private function send_global_packet($packet) {
 		for($i=0;$i<$this->max;$i++) {
 			if(!isset($this->clients[$i])) { continue; }
@@ -191,7 +199,7 @@ class server {
 		fwrite($fh, 'GLOBAL: '.str_replace("\n", '|', $packet)."\n");
 		fclose($fh);
 	}
-	
+
 	private function set_bordering_chunks($client) {
 		$chunkx = $this->clients[$client]->chunkx;
 		$chunky = $this->clients[$client]->chunky;
@@ -205,10 +213,10 @@ class server {
 		$this->clients[$client]->border['b']['x'] = $chunkx; $this->clients[$client]->border['b']['y'] = $chunky+1;
 		$this->clients[$client]->border['br']['x'] = $chunkx+1; $this->clients[$client]->border['br']['y'] = $chunky+1;
 	}
-		
+
 	private function send_chunks($client) {
 		$this->set_bordering_chunks($client);
-	
+
 		$x = 0;
 		$y = 0;
 		//$layer_count = 0;
@@ -234,11 +242,11 @@ class server {
 		}
 		//echo 'Sent '.$layer_count." layers.\n";
 	}
-	
+
 	private function send_player($client) {
 		$this->send_packet("6\n0\n".$this->clients[$client]->chunkx."\n".$this->clients[$client]->chunky."\n".$this->clients[$client]->localx."\n".$this->clients[$client]->localy."\n", $client);
 	}
-	
+
 	private function spawn_player($client) {
 		for($a=0;$a<$this->max;$a++) {
 			if(!isset($this->clients[$a]) || $a == $client) { continue; }
@@ -246,7 +254,7 @@ class server {
 			echo 'Sent spawn data to #'.$a.' for #'.$client.".\n";
 		}
 	}
-	
+
 	private function get_spawned_players($client) {
 		for($a=0;$a<$this->max;$a++) {
 			if(!isset($this->clients[$a]) || $a == $client) { continue; }
@@ -254,7 +262,7 @@ class server {
 			echo 'Sent spawn data to #'.$client.' for #'.$a.".\n";
 		}
 	}
-	
+
 	private function update_players() {
 		for($a=0;$a<$this->max;$a++) {
 			if(!isset($this->clients[$a]) || $this->clients[$a]->username == '') { continue; }
@@ -265,7 +273,7 @@ class server {
 			}
 		}
 	}
-	
+
 	private function send_npcs($client) {
 		foreach($this->clients[$client]['border'] as $chunk) {
 			if(isset($this->chunks['x'.$chunk['x'].'y'.$chunk['y']])) {
@@ -274,17 +282,17 @@ class server {
 			}
 		}
 	}
-	
+
 	private function send_music($id, $type, $client) {
 		if($type == 'loop') { $op_code = 7; }
 		elseif($type == 'once') { $op_code = 8; }
 		elseif($type == 'alone') { $op_code = 9; }
 		else { return false; }
-		
+
 		$this->send_packet($op_code."\n".$id."\n", $client);
 		echo 'Sent Client #'.$client.' music #'.$id.'. (Type: '.$type.")\n";
 	}
-	
+
 	private function stop() {
 		socket_close($this->socket);
 		echo "Server stopped.\n";
