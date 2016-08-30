@@ -26,13 +26,22 @@ class Server
 		$fh = fopen('data_sent.txt', 'w');
 		fwrite($fh, "- - - Data Sent to Client Log - - -\n");
 		fclose($fh);
-		$this->start();
+		$this->startup();
 		$this->loop();
 		$this->stop();
 	}
 
-	private function start() {
-		//Load chunks
+	private function startup()
+    {
+        $this->loadChunks();
+        $this->loadNPCs();
+        $this->openSocket();
+
+		echo "Server started.\n";
+	}
+
+    private function loadChunks()
+    {
 		echo 'Loading chunks... ';
 		$file_names = scandir('chunks');
 		foreach($file_names as $file_name) {
@@ -41,8 +50,11 @@ class Server
 			$this->chunks[$chunk_name] = new Chunk($chunk_name);
 		}
 		echo "Done!\n";
+    }
 
-		echo 'Loading NPCs... ';
+    private function loadNPCs()
+    {
+        echo 'Loading NPCs... ';
 		$npc_config_file = ereg_replace("[\t\n\r]", '', file_get_contents('config/npcs.txt'));
 		$npc_config = explode('#', $npc_config_file);
 		foreach($npc_config as $npc_data) {
@@ -50,16 +62,16 @@ class Server
 			$this->npcs[] = new NPC($npc_fields[0], $npc_fields[1], $npc_fields[2], $npc_fields[3], $npc_fields[4], $npc_fields[5]);
 		}
 		echo "Done!\n";
+    }
 
-		//Setup socket
+    private function openSocket()
+    {
 		echo 'Setting up socket... ';
 		$this->socket = socket_create(AF_INET, SOCK_STREAM, 0);
 		socket_bind($this->socket, $this->address, $this->port) or die('Error: Could not bind to address');
 		socket_listen($this->socket);
 		echo "Done!\n";
-
-		echo "Server started.\n";
-	}
+    }
 
 	private function loop() {
 		while(true) {
