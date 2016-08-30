@@ -35,4 +35,3 @@ class Client
 		$this->localy = $localy;
 	}
 }
-?>

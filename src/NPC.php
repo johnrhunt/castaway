@@ -27,4 +27,3 @@ class NPC
 		$this->localy = $localy;
 	}
 }
-?>

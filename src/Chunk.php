@@ -31,4 +31,3 @@ class Chunk
 		return $tiles[$layer][$tile];
 	}
 }
-?>

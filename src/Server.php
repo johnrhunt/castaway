@@ -298,4 +298,3 @@ class Server
 		echo "Server stopped.\n";
 	}
 }
-?>

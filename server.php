@@ -8,4 +8,3 @@ require 'vendor/autoload.php';
 
 $server = new Server('localhost', 25394, 5);
 $server->run();
-?>
