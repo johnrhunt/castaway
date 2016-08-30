@@ -28,7 +28,7 @@ class Server
 		fclose($fh);
 		$this->startup();
 		$this->loop();
-		$this->stop();
+		$this->shutdown();
 	}
 
 	private function startup()
@@ -38,6 +38,13 @@ class Server
         $this->openSocket();
 
 		echo "Server started.\n";
+	}
+
+    private function shutdown()
+    {
+        $this->closeSocket();
+
+		echo "Server stopped.\n";
 	}
 
     private function loadChunks()
@@ -71,6 +78,11 @@ class Server
 		socket_bind($this->socket, $this->address, $this->port) or die('Error: Could not bind to address');
 		socket_listen($this->socket);
 		echo "Done!\n";
+    }
+
+    private function closeSocket()
+    {
+        socket_close($this->socket);
     }
 
 	private function loop() {
@@ -303,10 +315,5 @@ class Server
 
 		$this->send_packet($op_code."\n".$id."\n", $client);
 		echo 'Sent Client #'.$client.' music #'.$id.'. (Type: '.$type.")\n";
-	}
-
-	private function stop() {
-		socket_close($this->socket);
-		echo "Server stopped.\n";
 	}
 }
